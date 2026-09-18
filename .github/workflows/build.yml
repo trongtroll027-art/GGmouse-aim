@@ -1,0 +1,51 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unzip source code and fix path
+        run: |
+          unzip FFAIMBUBBLE.zip
+          # Tự động sửa lỗi thư mục lồng nhau
+          if [ -d "FFAimBubble" ]; then
+            mv FFAimBubble/* .
+            mv FFAimBubble/.* . 2>/dev/null || true
+            rm -rf FFAimBubble
+          fi
+          if [ -d "ffaimbubble" ]; then
+            mv ffaimbubble/* .
+            mv ffaimbubble/.* . 2>/dev/null || true
+            rm -rf ffaimbubble
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Accept Android SDK licenses and install packages
+        run: |
+          yes | sdkmanager --licenses || true
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
